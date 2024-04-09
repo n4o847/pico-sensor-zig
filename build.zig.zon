@@ -1,0 +1,18 @@
+.{
+    .name = "pico-sensor-zig",
+    .version = "0.1.0",
+    .dependencies = .{
+        .@"microzig-build" = .{
+            .url = "https://downloads.microzig.tech/packages/.data/microzig-build-0.11.0-42-g200340408.tar.gz",
+            .hash = "12203d2fcfa911c93c8fc6fdccaafafeeb4a9ad51a056e2ce4da64b503194a25e97a",
+        },
+        .@"microzig-core" = .{
+            .url = "https://downloads.microzig.tech/packages/.data/microzig-core-0.11.0-42-g200340408.tar.gz",
+            .hash = "12207e762b17484396b4b52cc7d76660039245f830d2e675c5d77759146f490a3738",
+        },
+        .@"raspberrypi/rp2040" = .{
+            .url = "https://downloads.microzig.tech/packages/board-support/raspberrypi/.data/rp2040-0.11.0-42-g200340408.tar.gz",
+            .hash = "1220d9cd7cd4d20f91f929bee20e90ae12a7600d07693a5bdfbaa98f4d079dec32b7",
+        },
+    },
+}

@@ -1,70 +1,46 @@
 const std = @import("std");
+const MicroZig = @import("microzig-build");
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
+const available_examples = [_]Example{
+    // RaspberryPi Boards:
+    .{ .target = "board:raspberry_pi/pico", .name = "pico_blinky", .file = "src/main.zig" },
+};
+
 pub fn build(b: *std.Build) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
-
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // set a preferred release mode, allowing the user to decide how to optimize.
+    const microzig = MicroZig.createBuildEnvironment(b, .{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "pico-sensor-zig",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const show_targets_step = b.step("show-targets", "Shows all available MicroZig targets");
+    show_targets_step.dependOn(microzig.getShowTargetsStep());
 
-    // This declares intent for the executable to be installed into the
-    // standard location when the user invokes the "install" step (the default
-    // step when running `zig build`).
-    b.installArtifact(exe);
+    for (available_examples) |example| {
+        const target = microzig.findTarget(example.target).?;
 
-    // This *creates* a Run step in the build graph, to be executed when another
-    // step is evaluated that depends on it. The next line below will establish
-    // such a dependency.
-    const run_cmd = b.addRunArtifact(exe);
+        // `addFirmware` basically works like addExecutable, but takes a
+        // `microzig.Target` for target instead of a `std.zig.CrossTarget`.
+        //
+        // The target will convey all necessary information on the chip,
+        // cpu and potentially the board as well.
+        const firmware = microzig.addFirmware(b, .{
+            .name = example.name,
+            .target = target,
+            .optimize = optimize,
+            .source_file = .{ .path = example.file },
+        });
 
-    // By making the run step depend on the install step, it will be run from the
-    // installation directory rather than directly from within the cache directory.
-    // This is not necessary, however, if the application depends on other installed
-    // files, this ensures they will be present and in the expected location.
-    run_cmd.step.dependOn(b.getInstallStep());
+        // `installFirmware()` is the MicroZig pendant to `Build.installArtifact()`
+        // and allows installing the firmware as a typical firmware file.
+        //
+        // This will also install into `$prefix/firmware` instead of `$prefix/bin`.
+        microzig.installFirmware(b, firmware, .{});
 
-    // This allows the user to pass arguments to the application in the build
-    // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
+        // For debugging, we also always install the firmware as an ELF file
+        microzig.installFirmware(b, firmware, .{ .format = .elf });
     }
-
-    // This creates a build step. It will be visible in the `zig build --help` menu,
-    // and can be selected like this: `zig build run`
-    // This will evaluate the `run` step rather than the default, which is "install".
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
-
-    // Creates a step for unit testing. This only builds the test executable
-    // but does not run it.
-    const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const run_unit_tests = b.addRunArtifact(unit_tests);
-
-    // Similar to creating the run step earlier, this exposes a `test` step to
-    // the `zig build --help` menu, providing a way for the user to request
-    // running the unit tests.
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_unit_tests.step);
 }
+
+const Example = struct {
+    target: []const u8,
+    name: []const u8,
+    file: []const u8,
+};

@@ -1,46 +1,43 @@
 const std = @import("std");
-const MicroZig = @import("microzig-build");
+const MicroZig = @import("microzig/build");
+const rp2040 = @import("microzig/bsp/raspberrypi/rp2040");
 
 const available_examples = [_]Example{
     // RaspberryPi Boards:
-    .{ .target = "board:raspberry_pi/pico", .name = "pico_blinky", .file = "src/main.zig" },
+    .{ .target = rp2040.boards.raspberrypi.pico, .name = "pico_blinky", .file = "src/main.zig" },
 };
 
 pub fn build(b: *std.Build) void {
-    const microzig = MicroZig.createBuildEnvironment(b, .{});
+    const mz = MicroZig.init(b, .{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const show_targets_step = b.step("show-targets", "Shows all available MicroZig targets");
-    show_targets_step.dependOn(microzig.getShowTargetsStep());
-
     for (available_examples) |example| {
-        const target = microzig.findTarget(example.target).?;
 
-        // `addFirmware` basically works like addExecutable, but takes a
+        // `add_firmware` basically works like addExecutable, but takes a
         // `microzig.Target` for target instead of a `std.zig.CrossTarget`.
         //
         // The target will convey all necessary information on the chip,
         // cpu and potentially the board as well.
-        const firmware = microzig.addFirmware(b, .{
+        const firmware = mz.add_firmware(b, .{
             .name = example.name,
-            .target = target,
+            .target = example.target,
             .optimize = optimize,
-            .source_file = .{ .path = example.file },
+            .root_source_file = .{ .path = example.file },
         });
 
-        // `installFirmware()` is the MicroZig pendant to `Build.installArtifact()`
+        // `install_firmware()` is the MicroZig pendant to `Build.installArtifact()`
         // and allows installing the firmware as a typical firmware file.
         //
         // This will also install into `$prefix/firmware` instead of `$prefix/bin`.
-        microzig.installFirmware(b, firmware, .{});
+        mz.install_firmware(b, firmware, .{});
 
         // For debugging, we also always install the firmware as an ELF file
-        microzig.installFirmware(b, firmware, .{ .format = .elf });
+        mz.install_firmware(b, firmware, .{ .format = .elf });
     }
 }
 
 const Example = struct {
-    target: []const u8,
+    target: MicroZig.Target,
     name: []const u8,
     file: []const u8,
 };

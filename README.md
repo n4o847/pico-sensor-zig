@@ -26,3 +26,7 @@
 5. Run the program on your Raspberry Pi Pico W in either way
    - Load build/pico_sensor.elf on your Pico via a debugger
    - Press and hold the BOOTSEL button, and plug your Pico into your computer. Then drag and drop build/pico_sensor.uf2 onto the RPI-RP2 drive
+
+## sensor-microzig
+
+Work in progress because [MicroZig](https://github.com/ZigEmbeddedGroup/microzig) does not currently support Pico W.

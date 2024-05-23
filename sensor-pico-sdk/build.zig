@@ -29,6 +29,9 @@ pub fn build(b: *std.Build) !void {
         var walker = try dir.walk(b.allocator);
         defer walker.deinit();
         while (try walker.next()) |entry| {
+            if (std.mem.startsWith(u8, entry.path, "host/")) {
+                continue;
+            }
             if (std.mem.eql(u8, entry.basename, "include")) {
                 const include_path = try std.fmt.allocPrint(b.allocator, "pico-sdk/src/{s}", .{entry.path});
                 obj.addIncludePath(b.path(include_path));

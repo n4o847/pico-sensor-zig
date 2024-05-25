@@ -1,0 +1,10 @@
+services:
+  broker:
+    image: eclipse-mosquitto
+    ports:
+      - 1883:1883
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+  subscriber:
+    image: eclipse-mosquitto
+    command: ["mosquitto_sub", "-h", "broker", "-t", "test"]

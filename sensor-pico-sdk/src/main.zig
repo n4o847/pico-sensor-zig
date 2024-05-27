@@ -1,3 +1,5 @@
+const std = @import("std");
+
 const c = @cImport({
     @cInclude("stdlib.h");
     @cInclude("stdio.h");
@@ -107,6 +109,10 @@ fn mqtt_request_cb(arg: ?*anyopaque, err: c.err_t) callconv(.C) void {
 }
 
 export fn main() c_int {
+    var buffer: [100]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    const allocator = fba.allocator();
+
     _ = c.stdio_init_all();
 
     if (c.cyw43_arch_init() != 0) {
@@ -143,19 +149,31 @@ export fn main() c_int {
         }
     }
 
+    var count: i32 = 0;
+
+    var message_string = std.ArrayList(u8).init(allocator);
+    defer message_string.deinit();
+
     while (true) {
         c.cyw43_arch_poll();
         if (c.mqtt_client_is_connected(mqtt_client) == 1) {
             c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, true);
             const topic = "test";
-            const payload = "hello";
+            const Message = struct { count: i32 };
+            const message = Message{ .count = count };
+            message_string.clearRetainingCapacity();
+            std.json.stringify(message, .{}, message_string.writer()) catch {
+                _ = c.printf("Failed to stringify message\n");
+            };
+            const payload = message_string.items;
             const qos = 0;
             const retain = 0;
-            const err = c.mqtt_publish(mqtt_client, topic, payload, payload.len, qos, retain, mqtt_request_cb, @constCast(&mqtt_client_info));
+            const err = c.mqtt_publish(mqtt_client, topic, payload.ptr, @intCast(payload.len), qos, retain, mqtt_request_cb, @constCast(&mqtt_client_info));
             if (err != c.ERR_OK) {
                 _ = c.printf("Failed to publish (%s)\n", show_lwip_err(err).ptr);
             }
             c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, false);
+            count += 1;
             c.sleep_ms(1000);
         }
     }

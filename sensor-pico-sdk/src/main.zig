@@ -28,6 +28,29 @@ fn show_pico_error_code(err: c_int) []const u8 {
     };
 }
 
+fn show_lwip_err(err: c.err_t) []const u8 {
+    return switch (err) {
+        c.ERR_OK => "ERR_OK: No error, everything OK.",
+        c.ERR_MEM => "ERR_MEM: Out of memory error.",
+        c.ERR_BUF => "ERR_BUF: Buffer error.",
+        c.ERR_TIMEOUT => "ERR_TIMEOUT: Timeout.",
+        c.ERR_RTE => "ERR_RTE: Routing problem.",
+        c.ERR_INPROGRESS => "ERR_INPROGRESS: Operation in progress.",
+        c.ERR_VAL => "ERR_VAL: Illegal value.",
+        c.ERR_WOULDBLOCK => "ERR_WOULDBLOCK: Operation would block.",
+        c.ERR_USE => "ERR_USE: Address in use.",
+        c.ERR_ALREADY => "ERR_ALREADY: Already connecting.",
+        c.ERR_ISCONN => "ERR_ISCONN: Conn already established.",
+        c.ERR_CONN => "ERR_CONN: Not connected.",
+        c.ERR_IF => "ERR_IF: Low-level netif error.",
+        c.ERR_ABRT => "ERR_ABRT: Connection aborted.",
+        c.ERR_RST => "ERR_RST: Connection reset.",
+        c.ERR_CLSD => "ERR_CLSD: Connection closed.",
+        c.ERR_ARG => "ERR_ARG: Illegal argument.",
+        else => "???",
+    };
+}
+
 fn show_mqtt_connection_status(err: c.mqtt_connection_status_t) []const u8 {
     return switch (err) {
         c.MQTT_CONNECT_ACCEPTED => "MQTT_CONNECT_ACCEPTED",
@@ -72,11 +95,31 @@ fn mqtt_incoming_data_cb(arg: ?*anyopaque, data: [*c]const u8, len: u16, flags: 
 
 fn mqtt_connection_cb(client: ?*c.mqtt_client_t, arg: ?*anyopaque, status: c.mqtt_connection_status_t) callconv(.C) void {
     const client_info: *c.mqtt_connect_client_info_t = @ptrCast(@alignCast(arg));
-    _ = client;
 
     _ = c.printf("MQTT client \"%s\" connection cb: status %s\n", client_info.client_id, show_mqtt_connection_status(status).ptr);
 
-    // if (status == c.MQTT_CONNECT_ACCEPTED) {}
+    if (status != c.MQTT_CONNECT_ACCEPTED) {
+        return;
+    }
+
+    while (true) {
+        const topic = "test";
+        const payload = "hello";
+        const qos = 0;
+        const retain = 0;
+        const err = c.mqtt_publish(client, topic, payload, payload.len, qos, retain, mqtt_request_cb, @constCast(&mqtt_client_info));
+        if (err != c.ERR_OK) {
+            _ = c.printf("Failed to publish (%s)\n", show_lwip_err(err).ptr);
+            return;
+        }
+        c.sleep_ms(1000);
+    }
+}
+
+fn mqtt_request_cb(arg: ?*anyopaque, err: c.err_t) callconv(.C) void {
+    const client_info: *c.mqtt_connect_client_info_t = @ptrCast(@alignCast(arg));
+
+    _ = c.printf("MQTT client \"%s\" request cb: err %s\n", client_info.client_id, show_lwip_err(err).ptr);
 }
 
 export fn main() c_int {
@@ -112,7 +155,7 @@ export fn main() c_int {
     {
         const err = c.mqtt_client_connect(mqtt_client, &ip_addr, port, mqtt_connection_cb, @constCast(&mqtt_client_info), &mqtt_client_info);
         if (err != c.ERR_OK) {
-            _ = c.printf("Failed to connect to broker (%d)\n", err);
+            _ = c.printf("Failed to connect to broker (%s)\n", show_lwip_err(err).ptr);
         }
     }
 

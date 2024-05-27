@@ -1,5 +1,15 @@
 # pico-sensor-zig
 
+## server
+
+1. Install Docker
+
+2. Run containers
+   ```bash
+   cd server
+   docker compose up -d
+   ```
+
 ## sensor-pico-sdk
 
 1. Install [Zig](https://ziglang.org/) (at least version 0.12)

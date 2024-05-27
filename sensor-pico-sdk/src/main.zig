@@ -95,25 +95,9 @@ fn mqtt_incoming_data_cb(arg: ?*anyopaque, data: [*c]const u8, len: u16, flags: 
 
 fn mqtt_connection_cb(client: ?*c.mqtt_client_t, arg: ?*anyopaque, status: c.mqtt_connection_status_t) callconv(.C) void {
     const client_info: *c.mqtt_connect_client_info_t = @ptrCast(@alignCast(arg));
+    _ = client;
 
     _ = c.printf("MQTT client \"%s\" connection cb: status %s\n", client_info.client_id, show_mqtt_connection_status(status).ptr);
-
-    if (status != c.MQTT_CONNECT_ACCEPTED) {
-        return;
-    }
-
-    while (true) {
-        const topic = "test";
-        const payload = "hello";
-        const qos = 0;
-        const retain = 0;
-        const err = c.mqtt_publish(client, topic, payload, payload.len, qos, retain, mqtt_request_cb, @constCast(&mqtt_client_info));
-        if (err != c.ERR_OK) {
-            _ = c.printf("Failed to publish (%s)\n", show_lwip_err(err).ptr);
-            return;
-        }
-        c.sleep_ms(1000);
-    }
 }
 
 fn mqtt_request_cb(arg: ?*anyopaque, err: c.err_t) callconv(.C) void {
@@ -160,10 +144,20 @@ export fn main() c_int {
     }
 
     while (true) {
-        c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, true);
-        c.sleep_ms(250);
-        c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, false);
-        c.sleep_ms(250);
+        c.cyw43_arch_poll();
+        if (c.mqtt_client_is_connected(mqtt_client) == 1) {
+            c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, true);
+            const topic = "test";
+            const payload = "hello";
+            const qos = 0;
+            const retain = 0;
+            const err = c.mqtt_publish(mqtt_client, topic, payload, payload.len, qos, retain, mqtt_request_cb, @constCast(&mqtt_client_info));
+            if (err != c.ERR_OK) {
+                _ = c.printf("Failed to publish (%s)\n", show_lwip_err(err).ptr);
+            }
+            c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, false);
+            c.sleep_ms(1000);
+        }
     }
 
     c.cyw43_arch_deinit();

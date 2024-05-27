@@ -43,7 +43,7 @@ pub fn build(b: *std.Build) !void {
     obj.addIncludePath(b.path("build/generated/pico_base"));
     obj.addIncludePath(b.path("include"));
 
-    obj.root_module.addCMacro("PICO_CYW43_ARCH_THREADSAFE_BACKGROUND", "1");
+    obj.root_module.addCMacro("PICO_CYW43_ARCH_POLL", "1");
 
     obj.linkLibC();
 

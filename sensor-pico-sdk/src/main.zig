@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const mhz19c = @import("mhz19c_uart.zig");
+
 const c = @cImport({
     @cInclude("stdlib.h");
     @cInclude("stdio.h");
@@ -115,6 +117,11 @@ export fn main() c_int {
 
     _ = c.stdio_init_all();
 
+    _ = c.printf("Setting up MH-Z19C: ");
+    mhz19c.init();
+    defer mhz19c.deinit();
+    _ = c.printf("OK\n");
+
     if (c.cyw43_arch_init() != 0) {
         _ = c.printf("Failed to initialize\n");
         return c.EXIT_FAILURE;
@@ -159,8 +166,11 @@ export fn main() c_int {
         if (c.mqtt_client_is_connected(mqtt_client) == 1) {
             c.cyw43_arch_gpio_put(c.CYW43_WL_GPIO_LED_PIN, true);
             const topic = "test";
-            const Message = struct { count: i32 };
-            const message = Message{ .count = count };
+            const Message = struct { count: i32, co2: u16 };
+
+            const co2 = mhz19c.read_co2_concentration();
+
+            const message = Message{ .count = count, .co2 = co2 };
             message_string.clearRetainingCapacity();
             std.json.stringify(message, .{}, message_string.writer()) catch {
                 _ = c.printf("Failed to stringify message\n");

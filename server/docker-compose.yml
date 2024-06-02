@@ -2,7 +2,7 @@ services:
   grafana:
     image: grafana/grafana-oss
     ports:
-      - 3000:3000
+      - "$GRAFANA_PORT:3000"
     volumes:
       - ./grafana/data:/var/lib/grafana
     user: "$PID:$GID"

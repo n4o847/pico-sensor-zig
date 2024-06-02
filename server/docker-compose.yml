@@ -32,3 +32,5 @@ services:
   mosquitto-subscriber:
     image: eclipse-mosquitto
     command: ["mosquitto_sub", "-h", "mosquitto", "-t", "test"]
+    depends_on:
+      - mosquitto

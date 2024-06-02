@@ -19,7 +19,7 @@ pub fn init() void {
     // workaround from here
     drain();
     c.sleep_ms(100);
-    enable_self_calibration();
+    disable_self_calibration();
     c.sleep_ms(100);
     _ = read_co2_concentration();
     c.sleep_ms(100);
